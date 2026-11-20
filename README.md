@@ -1,6 +1,6 @@
 # Angle Builder
 
-A Fabric mod for Minecraft 26.3 that helps you build at angles.
+A client-only NeoForge mod for Minecraft 1.21.1 (All The Mods 10) that helps you build at angles.
 
 Mods like [Measurements](https://github.com/Mrbysco/Measurements) show the
 distance between two points along the N/S/E/W axes. Angle Builder goes
@@ -8,20 +8,21 @@ further: pick any two points and it shows you exactly which blocks make up
 the line between them, at any angle in any direction, so you can build
 diagonals, slopes and angled walls without guesswork.
 
-## Planned features
+## Features
 
-- Mark a start and end point with a tool item.
-- Preview the voxelised line (3D Bresenham) between them as ghost blocks.
-- Show length, angle (horizontal and vertical) and block count.
-- A per-step guide ("2 forward, 1 right, 1 up…") for placing the line.
-- Snap to common angles (e.g. 15°, 22.5°, 30°, 45°).
+- Aim at a block and press **Set Anchor** (`V`) twice to mark the two Anchors of a Line. A white preview follows the crosshair in between. **Cancel Anchor** (`B`) drops a pending first Anchor.
+- The Line's blocks (a thin 3D Bresenham line) are drawn as outlines, and positions that are already built are hidden.
+- The Measurement above the hotbar shows block count, blocks left, distance, deltas, compass bearing, elevation, the X:Y:Z ratio, and a ruler of Runs.
+- Hold **Snap** (`Left Alt`) to move the second Anchor onto whole-block ratios (1:1, 2:1, 3:2, …).
+- Lines are saved per world or server and per dimension. Look at a Line to make it the Target, then press **Delete** (`N`) to remove it. **Clear** and **Hide** are unbound by default.
+- Settings live in `config/anglebuilder.json`.
 
 ## Development
 
-Requires JDK 25.
+Requires JDK 21.
 
 ```sh
-./gradlew build        # build the mod jar into build/libs/
+./gradlew build        # test and build the mod jar into build/libs/
 ./gradlew runClient    # launch a dev Minecraft client with the mod loaded
 ```
 

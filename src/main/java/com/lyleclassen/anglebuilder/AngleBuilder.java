@@ -1,30 +1,19 @@
 package com.lyleclassen.anglebuilder;
 
-import net.fabricmc.api.ModInitializer;
-
-import net.minecraft.resources.Identifier;
-
+import com.lyleclassen.anglebuilder.client.AngleBuilderClient;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AngleBuilder implements ModInitializer {
+/** Client-only: the mod does nothing on a dedicated server and isn't needed there. */
+@Mod(value = AngleBuilder.MOD_ID, dist = Dist.CLIENT)
+public class AngleBuilder {
 	public static final String MOD_ID = "anglebuilder";
-
-	// This logger is used to write text to the console and the log file.
-	// It is considered best practice to use your mod id as the logger's name.
-	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	@Override
-	public void onInitialize() {
-		// This code runs as soon as Minecraft is in a mod-load-ready state.
-		// However, some things (like resources) may still be uninitialized.
-		// Proceed with mild caution.
-
-		LOGGER.info("Angle Builder initialised");
-	}
-
-	public static Identifier id(String path) {
-		return Identifier.fromNamespaceAndPath(MOD_ID, path);
+	public AngleBuilder(IEventBus modBus) {
+		AngleBuilderClient.init(modBus);
 	}
 }
