@@ -15,3 +15,11 @@ _Avoid_: path, ray, diagonal, box
 **Measurement**:
 The numbers describing a Line, such as its length, its angles and how many blocks it contains.
 _Avoid_: stats, info
+
+**Step**:
+A point along a Line where it shifts one block on an axis other than its longest axis.
+_Avoid_: jump, offset
+
+**Run**:
+A stretch of consecutive blocks along a Line's longest axis, between two Steps.
+_Avoid_: segment, stretch
