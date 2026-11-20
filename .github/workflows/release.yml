@@ -1,0 +1,63 @@
+# Publishes a release when a version tag is pushed, for example:
+#   git tag v0.2.0 && git push origin v0.2.0
+# The tag must match mod_version in gradle.properties. See docs/curseforge.md for the one-time setup.
+
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
+      - name: read version and changelog
+        id: meta
+        run: |
+          version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match mod_version=$version in gradle.properties"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # The newest "## [x.y.z]" section of CHANGELOG.md, without its heading.
+          awk '/^## \[[0-9]/{if (seen) exit; seen=1; next} seen' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no ## [x.y.z] section"
+            exit 1
+          fi
+
+      - name: build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+
+      - name: publish to CurseForge and GitHub
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          name: Protractor ${{ steps.meta.outputs.version }}
+          version: ${{ steps.meta.outputs.version }}
+          changelog-file: release-notes.md
+          files: build/libs/protractor-neoforge-*.jar
+          loaders: neoforge
+          game-versions: '1.21.1'
+          java: '21'
+
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+
+          github-tag: ${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

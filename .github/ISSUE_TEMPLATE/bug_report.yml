@@ -1,0 +1,44 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [needs-triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: mod-version
+    attributes:
+      label: Protractor version
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: neoforge-version
+    attributes:
+      label: Minecraft and NeoForge versions
+      placeholder: "1.21.1, NeoForge 21.1.x"
+    validations:
+      required: true
+  - type: input
+    id: modpack
+    attributes:
+      label: Modpack (if any)
+      placeholder: "All The Mods 10 5.x"
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - Singleplayer
+        - Multiplayer
+        - Both
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste `logs/latest.log` or a crash report, or link to it on a paste site such as mclo.gs.
+      render: text

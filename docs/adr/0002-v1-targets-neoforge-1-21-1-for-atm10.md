@@ -12,4 +12,4 @@ The maths stays in a pure `core` package with no Minecraft types, so a later 26.
 ## Consequences
 
 - Fabric and Minecraft 26.3 are out of v1. Porting later means new render and input adapters around the same `core`.
-- Server Lines are stored under `<gameDir>/anglebuilder/servers/<address>.json` as decided, but characters that aren't safe in a file name (such as the `:` before a port, which Windows rejects) become `_`.
+- Server Lines are stored under `<gameDir>/protractor/servers/<address>.json` as decided, but characters that aren't safe in a file name (such as the `:` before a port, which Windows rejects) become `_`.

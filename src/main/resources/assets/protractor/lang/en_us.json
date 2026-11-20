@@ -1,0 +1,9 @@
+{
+	"item.protractor.protractor": "Protractor",
+	"key.categories.protractor": "Protractor",
+	"key.protractor.snap": "Snap (hold)",
+	"key.protractor.hide": "Hide/Show Lines",
+	"protractor.hidden": "Protractor: Lines hidden",
+	"protractor.shown": "Protractor: Lines shown",
+	"protractor.cleared": "Cleared %s Lines"
+}

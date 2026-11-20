@@ -1,10 +1,10 @@
 # Singleplayer Lines live inside the world's save folder
 
-In singleplayer, Lines are saved inside the world's save folder, at `saves/<world>/anglebuilder/lines.json`. They are not kept beside the multiplayer files under the game directory, even though Angle Builder is a client-only mod and singleplayer and multiplayer storage therefore end up in two different places. Lines describe one particular world. Keeping them in its folder means copying a world copies its Lines, deleting a world removes them, and renaming a world has no effect, because renaming doesn't change the folder name. Multiplayer servers have no local save folder, so their Lines stay at `<gameDir>/anglebuilder/servers/<address>.json`.
+In singleplayer, Lines are saved inside the world's save folder, at `saves/<world>/protractor/lines.json`. They are not kept beside the multiplayer files under the game directory, even though Protractor is a client-only mod and singleplayer and multiplayer storage therefore end up in two different places. Lines describe one particular world. Keeping them in its folder means copying a world copies its Lines, deleting a world removes them, and renaming a world has no effect, because renaming doesn't change the folder name. Multiplayer servers have no local save folder, so their Lines stay at `<gameDir>/protractor/servers/<address>.json`.
 
 ## Considered Options
 
-- **Everything under the game directory**, at `anglebuilder/worlds/<save-folder-name>.json`. This keeps one storage root, but a copied world starts with no Lines, a deleted world leaves an orphan file behind, and two game instances that share a folder name would overwrite each other's Lines.
+- **Everything under the game directory**, at `protractor/worlds/<save-folder-name>.json`. This keeps one storage root, but a copied world starts with no Lines, a deleted world leaves an orphan file behind, and two game instances that share a folder name would overwrite each other's Lines.
 
 ## Consequences
 

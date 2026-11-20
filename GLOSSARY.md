@@ -1,4 +1,4 @@
-# Angle Builder
+# Protractor
 
 A Minecraft mod that shows players exactly which blocks form a straight line between two points at any angle, so they can build diagonals, slopes and angled walls.
 
@@ -7,6 +7,10 @@ A Minecraft mod that shows players exactly which blocks form a straight line bet
 **Anchor**:
 One of the two points a player marks to define a Line.
 _Avoid_: corner, endpoint, marker, pos1/pos2
+
+**Protractor**:
+The item a player holds to set Anchors and delete or clear Lines. It is also the name of the mod: in these docs "the Protractor" means the item and "the mod" means the mod.
+_Avoid_: tool, wand, ruler
 
 **Line**:
 The exact set of blocks connecting two Anchors, at any angle and in any direction. A Line is always thin: one block per step along its longest axis, so neighbouring blocks may touch only at an edge or a corner. A Line's blocks depend only on where its two Anchors are, not on which was placed first.

@@ -1,10 +1,10 @@
-# angle-builder
+# protractor
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues live in GitHub Issues for LyleClassen/angle-builder, used through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for LyleClassen/protractor, used through the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

@@ -1,25 +1,68 @@
-# Angle Builder
+<p align="center">
+  <img src="docs/logo.png" alt="Protractor logo" width="200">
+</p>
 
-A NeoForge mod for Minecraft 1.21.1 (All The Mods 10) that helps you build at angles. It adds one item, so on multiplayer it must be installed on the server as well as the client.
+<h1 align="center">Protractor</h1>
+
+<p align="center">
+  <a href="https://github.com/LyleClassen/protractor/actions/workflows/build.yml"><img src="https://github.com/LyleClassen/protractor/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <img src="https://img.shields.io/badge/Minecraft-1.21.1-62B47A" alt="Minecraft 1.21.1">
+  <img src="https://img.shields.io/badge/NeoForge-21.1.x-E4A33B" alt="NeoForge 21.1.x">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License"></a>
+</p>
+
+A NeoForge mod for Minecraft 1.21.1, made with All The Mods 10 in mind, that helps you build at angles.
 
 Mods like [Measurements](https://github.com/Mrbysco/Measurements) show the
-distance between two points along the N/S/E/W axes. Angle Builder goes
+distance between two points along the N/S/E/W axes. Protractor goes
 further: pick any two points and it shows you exactly which blocks make up
 the line between them, at any angle in any direction, so you can build
 diagonals, slopes and angled walls without guesswork.
 
-## Features
+## Download
 
-- Craft an **Protractor** (three glass panes in an arc over a tinted glass, on a row of three glass). Hold it and right-click a block to set the first Anchor, then right-click again to set the second. A white preview follows the crosshair in between.
-- **Sneak + right-click** cancels a pending first Anchor, or deletes the Line you're looking at (the Target).
-- **Sneak + double right-click** clears every Line in the current dimension.
-- The Line's blocks (a thin 3D Bresenham line) are drawn as outlines, and positions that are already built are hidden.
-- The Measurement above the hotbar shows block count, blocks left, distance, deltas, compass bearing, elevation, the X:Y:Z ratio, and a ruler of Runs.
-- Hold **Snap** (`Left Alt`) to move the second Anchor onto whole-block ratios (1:1, 2:1, 3:2, …).
-- Lines are saved per world or server and per dimension. **Hide** is unbound by default.
-- Settings live in `config/anglebuilder.json`.
+Get the jar from [GitHub Releases](https://github.com/LyleClassen/protractor/releases) and drop it into your `mods` folder.
 
-## Development
+Protractor adds an item, so **on multiplayer it must be installed on the server as well as on every client**. Singleplayer needs nothing extra.
+
+## How to use it
+
+Craft a **Protractor** from three glass panes in an arc over a tinted glass, on a row of three glass:
+
+```
+·  P  ·      P = Glass Pane
+P  T  P      T = Tinted Glass
+G  G  G      G = Glass
+```
+
+| Action | What it does |
+| --- | --- |
+| **Right-click** a block | Sets the first Anchor. A white preview follows your crosshair. Right-click again to set the second Anchor and save the Line. |
+| **Sneak + right-click** | Cancels a pending first Anchor, or deletes the Line you're looking at (the Target). |
+| **Sneak + double right-click** | Clears every Line in the current dimension. |
+| Hold **Snap** (`Left Alt`) | Moves the second Anchor onto whole-block ratios (1:1, 2:1, 3:2, …). |
+| **Hide** (unbound by default) | Hides and shows saved Lines. Rebind it in Controls → Protractor. |
+
+### Features
+
+- A Line's blocks (a thin 3D line) are drawn as outlines. Positions that are already built are hidden, so you see only what's left to place.
+- The Measurement above the hotbar shows the block count, blocks left, distance, deltas, compass bearing, elevation, the X:Y:Z ratio, and a ruler of Runs.
+- Lines are saved per world or server and per dimension.
+
+### Config
+
+Settings live in `config/protractor.json`. It is created on first launch and read again on every world join.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `reach` | `64` | How far away, in blocks, you can set an Anchor. |
+| `drawDistance` | `64` | How far away, in blocks, Lines are drawn. |
+| `linePalette` | 8 colours | The colours saved Lines cycle through, as `"#RRGGBB"`. |
+| `previewColor` | `#FFFFFF` | The colour of the preview Line. |
+| `targetColor` | `#FFFF00` | The colour of the Line you're looking at. |
+| `snapMaxPart` | `4` | The largest number used in a Snap ratio. |
+
+## Building from source
 
 Requires JDK 21.
 
@@ -28,6 +71,14 @@ Requires JDK 21.
 ./gradlew runClient    # launch a dev Minecraft client with the mod loaded
 ```
 
+To regenerate the logo after changing the item texture, run `python3 tools/logo/make_logo.py`.
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Acknowledgements
+
+Protractor is inspired by [Measurements](https://github.com/Mrbysco/Measurements) by [Mrbysco](https://github.com/Mrbysco). Measurements' tape measure showed how handy it is to measure in-world, and this mod builds on that idea for angled building. Thank you to Mrbysco and the Measurements contributors.
+
 ## License
 
-MIT
+[MIT](LICENSE) © Lyle Classen
