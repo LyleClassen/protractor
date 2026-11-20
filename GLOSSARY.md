@@ -9,7 +9,7 @@ One of the two points a player marks to define a Line.
 _Avoid_: corner, endpoint, marker, pos1/pos2
 
 **Line**:
-The exact set of blocks connecting two Anchors, at any angle and in any direction.
+The exact set of blocks connecting two Anchors, at any angle and in any direction. A Line is always thin: one block per step along its longest axis, so neighbouring blocks may touch only at an edge or a corner.
 _Avoid_: path, ray, diagonal, box
 
 **Measurement**:
