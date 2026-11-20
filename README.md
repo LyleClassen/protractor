@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="docs/logo.png" alt="Protractor logo" width="200">
-</p>
-
-<h1 align="center">Protractor</h1>
+<h1 align="center">
+  <img src="docs/banner.png" alt="Protractor: see every block of a straight line, at any angle" width="900">
+</h1>
 
 <p align="center">
   <a href="https://github.com/LyleClassen/protractor/actions/workflows/build.yml"><img src="https://github.com/LyleClassen/protractor/actions/workflows/build.yml/badge.svg" alt="Build"></a>
@@ -75,7 +73,7 @@ Requires JDK 21.
 ./gradlew runClient    # launch a dev Minecraft client with the mod loaded
 ```
 
-To regenerate the logo after changing the item texture, run `python3 tools/logo/make_logo.py`.
+To regenerate the logo after changing the item texture, run `python3 tools/logo/make_logo.py`, then `java tools/logo/MakeBanner.java` to rebuild the banner.
 
 ## Contributing
 
