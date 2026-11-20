@@ -1,0 +1,32 @@
+{
+	"schemaVersion": 1,
+	"id": "anglebuilder",
+	"version": "${version}",
+	"name": "Angle Builder",
+	"description": "Visualise lines between any two points - not just N/S/E/W - so you can build diagonals and angled structures block by block.",
+	"authors": [
+		"LyleClassen"
+	],
+	"contact": {
+		"homepage": "https://github.com/LyleClassen/angle-builder",
+		"sources": "https://github.com/LyleClassen/angle-builder",
+		"issues": "https://github.com/LyleClassen/angle-builder/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/anglebuilder/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.lyleclassen.anglebuilder.AngleBuilder"
+		],
+		"client": [
+			"com.lyleclassen.anglebuilder.client.AngleBuilderClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
