@@ -27,6 +27,14 @@ The code is in two packages:
 
 ## Pull requests
 
+Every change to `main` goes in through a pull request. Nobody outside the maintainers can push to `main` directly, and only the maintainers merge PRs.
+
+1. Fork the repository and create a branch for your change.
+2. Open a pull request against `main` and fill in the template.
+3. A maintainer reviews it. Once the build passes and the review is done, a maintainer merges it.
+
+The maintainers are [Lyle Classen](https://github.com/LyleClassen) and Claude, Anthropic's AI model, working through Claude Code. Claude helps review and write changes, but a PR is merged by Lyle.
+
 - Keep each PR focused on one change.
 - Make sure `./gradlew build` passes.
 - Add or update tests in `core` when you change its logic.
