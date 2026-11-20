@@ -1,14 +1,23 @@
-# Publishes a release when a version tag is pushed, for example:
-#   git tag v0.2.0 && git push origin v0.2.0
-# The tag must match mod_version in gradle.properties. See docs/curseforge.md for the one-time setup.
+# Publishes a release when a new version lands on main.
+# On every push to main it reads mod_version from gradle.properties. If there is
+# no v<mod_version> tag yet, it builds the jar and uploads it to CurseForge and a
+# new GitHub Release (which creates the tag). If the tag already exists, it does
+# nothing, so merges that don't bump the version are not published.
+# See docs/curseforge.md for the one-time setup and the release steps.
 
 name: release
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+# Never run two releases at once, so a version can't be published twice.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -16,36 +25,48 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
-      - name: validate gradle wrapper
-        uses: gradle/actions/wrapper-validation@v6
-      - name: setup jdk
-        uses: actions/setup-java@v5
         with:
-          java-version: '21'
-          distribution: 'microsoft'
+          fetch-depth: 0
 
       - name: read version and changelog
         id: meta
         run: |
           version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match mod_version=$version in gradle.properties"
-            exit 1
-          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          # The newest "## [x.y.z]" section of CHANGELOG.md, without its heading.
-          awk '/^## \[[0-9]/{if (seen) exit; seen=1; next} seen' CHANGELOG.md > release-notes.md
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::notice::v$version is already released. Bump mod_version in gradle.properties to publish a new version."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          # The "## [x.y.z]" section of CHANGELOG.md for this version, without its heading.
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 {seen=1; next}
+            seen && /^## \[/ {exit}
+            seen' CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::CHANGELOG.md has no ## [x.y.z] section"
+            echo "::error::CHANGELOG.md has no ## [$version] section. Rename ## [Unreleased] to ## [$version] - YYYY-MM-DD."
             exit 1
           fi
 
+      - name: validate gradle wrapper
+        if: steps.meta.outputs.publish == 'true'
+        uses: gradle/actions/wrapper-validation@v6
+      - name: setup jdk
+        if: steps.meta.outputs.publish == 'true'
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
       - name: build
+        if: steps.meta.outputs.publish == 'true'
         run: |
           chmod +x ./gradlew
           ./gradlew build
 
       - name: publish to CurseForge and GitHub
+        if: steps.meta.outputs.publish == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: Protractor ${{ steps.meta.outputs.version }}
@@ -59,5 +80,6 @@ jobs:
           curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
-          github-tag: ${{ github.ref_name }}
+          github-tag: v${{ steps.meta.outputs.version }}
+          github-commitish: ${{ github.sha }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
