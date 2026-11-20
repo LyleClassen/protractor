@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Lines Look</title>
+<!--
+  PROTOTYPE · throwaway · wayfinder ticket #13
+  "How do a Line, its preview, the Target and the Measurement look?"
+  Three very different looks for the same small world, switched with ?variant=A|B|C
+  and the bottom bar (or the ← → keys). Scene state is switched with 1 / 2 / 3.
+  The maths (thin 3D Bresenham with sorted Anchors, Measurement, Runs) follows
+  the decisions in tickets #6, #8 and #10.
+-->
+<style>
+  :root { --ink:#fff; --shadow:#3f3f3f; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#9cc8ff; font:14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
+  #view { position:fixed; inset:0; }
+  canvas { display:block; }
+  .mc { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; color:#fff; text-shadow:2px 2px 0 var(--shadow); letter-spacing:.02em; }
+
+  /* fake vanilla HUD */
+  #crosshair { position:fixed; left:50%; top:50%; width:18px; height:18px; transform:translate(-50%,-50%); pointer-events:none; }
+  #crosshair:before, #crosshair:after { content:""; position:absolute; background:#fff; mix-blend-mode:difference; }
+  #crosshair:before { left:8px; top:0; width:2px; height:18px; }
+  #crosshair:after { top:8px; left:0; height:2px; width:18px; }
+  #hotbar { position:fixed; bottom:56px; left:50%; transform:translateX(-50%); display:flex; border:3px solid #222; background:rgba(60,60,60,.7); pointer-events:none; }
+  #hotbar div { width:40px; height:40px; border:2px solid #8b8b8b; }
+  #hotbar div.sel { border-color:#fff; }
+  #actionbar { position:fixed; bottom:112px; left:50%; transform:translateX(-50%); pointer-events:none; white-space:nowrap; }
+
+  /* overlays */
+  .tag { position:fixed; transform:translate(-50%,-100%); pointer-events:none; white-space:nowrap; }
+  #hud { position:fixed; pointer-events:none; }
+
+  /* prototype chrome: deliberately not Minecraft-looking */
+  .chrome { font:13px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; color:#1d1d1f; text-shadow:none; }
+  #info { position:fixed; top:12px; right:12px; width:340px; max-height:calc(100% - 100px); overflow:auto; background:rgba(255,255,255,.95); border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.25); padding:12px 14px; }
+  #info h1 { font-size:15px; margin:0 0 2px; }
+  #info .banner { display:inline-block; background:#fff3cd; border:1px solid #f0d58a; border-radius:5px; padding:1px 7px; font-size:11px; font-weight:600; margin-bottom:6px; }
+  #info dl { display:grid; grid-template-columns:96px 1fr; gap:5px 10px; margin:8px 0 0; }
+  #info dt { color:#6b6b70; }
+  #info dd { margin:0; }
+  #info .states { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  #info button { font:inherit; padding:4px 10px; border-radius:6px; border:1px solid #d6d4cf; background:#fff; cursor:pointer; }
+  #info button.on { background:#1d1d1f; color:#fff; border-color:#1d1d1f; }
+  #info .hint { color:#6b6b70; font-size:12px; margin-top:8px; }
+  #info details summary { cursor:pointer; color:#6b6b70; font-size:12px; margin-top:8px; }
+  #switcher { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:4px; background:#111; color:#fff; border-radius:999px; padding:4px; box-shadow:0 4px 16px rgba(0,0,0,.4); z-index:10; }
+  #switcher button { font:inherit; font-size:16px; background:transparent; color:#fff; border:0; width:34px; height:30px; border-radius:999px; cursor:pointer; }
+  #switcher button:hover { background:#333; }
+  #switcher span { min-width:260px; text-align:center; font-weight:600; }
+  @media (max-width:700px){ #info { width:calc(100% - 24px); max-height:40%; } #switcher span{min-width:160px;} }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="crosshair"></div>
+<div id="hotbar"><div></div><div class="sel"></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+<div id="actionbar" class="mc"></div>
+<div id="hud" class="mc"></div>
+<div id="tags"></div>
+
+<div id="info" class="chrome">
+  <span class="banner">PROTOTYPE · throwaway · wayfinder ticket #13</span>
+  <h1 id="vtitle"></h1>
+  <div id="vblurb" style="color:#444"></div>
+  <div class="states" id="states"></div>
+  <dl id="answers"></dl>
+  <div class="hint">Drag to orbit · scroll to zoom · <b>1 2 3</b> switch the scene · <b>← →</b> switch the look. Zoom right out to find the far Line (about 135 blocks away, north-west).</div>
+  <details><summary>What's in the world</summary>
+    <div class="hint" style="margin-top:4px">
+      <b>Line 1</b>: a climbing 3D Line behind the dirt hill.<br>
+      <b>Line 2</b>: a flat Line on the ground behind the stone wall. It's the Target in the "Looking at a Line" scene.<br>
+      <b>Preview</b>: Anchor 1 set, Anchor 2 following the crosshair (shown in "Placing" only).<br>
+      <b>Far Line</b>: about 135 blocks from the player, to test render distance.<br>
+      The player stands at the centre of the orbit.
+    </div>
+  </details>
+</div>
+
+<div id="switcher" class="chrome">
+  <button id="prev" title="Previous look (←)">←</button>
+  <span id="vlabel"></span>
+  <button id="next" title="Next look (→)">→</button>
+</div>
+
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ---------------------------------------------------------------- maths (per #6, #8, #10)
+function lineBlocks(a1, a2) {
+  // sort Anchors by X, Y, Z so the block set doesn't depend on placement order (#10)
+  const cmp = (p, q) => p[0]-q[0] || p[1]-q[1] || p[2]-q[2];
+  const swapped = cmp(a1, a2) > 0;
+  const [a, b] = swapped ? [a2, a1] : [a1, a2];
+  const d = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+  const ad = d.map(Math.abs), s = d.map(Math.sign);
+  const m = ad.indexOf(Math.max(...ad));
+  const n = ad[m];
+  const p = [...a];
+  const e = [0,1,2].map(k => 2*ad[k] - n);
+  const out = [[...p]];
+  for (let i = 0; i < n; i++) {
+    p[m] += s[m];
+    for (const k of [0,1,2]) {
+      if (k === m) continue;
+      if (e[k] > 0) { p[k] += s[k]; e[k] -= 2*n; }
+      e[k] += 2*ad[k];
+    }
+    out.push([...p]);
+  }
+  return swapped ? out.reverse() : out;   // read Runs from Anchor 1 to Anchor 2
+}
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+function measure(a1, a2, blocks) {
+  const d = [a2[0]-a1[0], a2[1]-a1[1], a2[2]-a1[2]];
+  const ad = d.map(Math.abs);
+  const count = Math.max(...ad) + 1;
+  const dist = Math.hypot(...d);
+  let bearing = Math.round((Math.atan2(d[0], -d[2]) * 180/Math.PI + 360) % 360) % 360;
+  const card = ['N','NE','E','SE','S','SW','W','NW'][Math.round(bearing/45) % 8];
+  const horiz = Math.hypot(d[0], d[2]);
+  const elev = Math.round(Math.atan2(d[1], horiz) * 180/Math.PI);
+  const nz = ad.filter(v => v);
+  const g = nz.reduce(gcd, 0) || 1;
+  const ratio = nz.map(v => v/g).join(':');
+  // Runs and Steps
+  const m = ad.indexOf(Math.max(...ad));
+  const minors = [0,1,2].filter(k => k !== m && ad[k]);
+  const runs = []; const steps = [];
+  let run = 1;
+  for (let i = 1; i < blocks.length; i++) {
+    const moved = minors.filter(k => blocks[i][k] !== blocks[i-1][k]);
+    if (moved.length) {
+      runs.push(run); run = 1;
+      steps.push(moved.map(k => k === 1 ? (d[1] > 0 ? '↑' : '↓') : (d[k] > 0 ? '→' : '←') + 'xyz'[k]).join(''));
+    } else run++;
+  }
+  runs.push(run);
+  const is3d = minors.length > 1;
+  let guide = '' + runs[0];
+  for (let i = 0; i < steps.length; i++) guide += (is3d ? ` ${steps[i]} ` : ' · ') + runs[i+1];
+  return { d, count, dist: dist.toFixed(1), bearing, card, elev, ratio, runs, steps, guide, is3d };
+}
+const sgn = v => (v > 0 ? '+' : '') + v;
+
+// ---------------------------------------------------------------- variants
+const VARIANTS = {
+  A: {
+    name: 'Glass & corner panel',
+    blurb: 'Ghost blocks you can see through walls. One detailed panel in the top-left corner.',
+    answers: {
+      'Blocks': 'Translucent ghost blocks, no outlines.',
+      'Through walls': 'Yes, always drawn on top of terrain.',
+      'Preview vs Line': 'Preview is white and pulses. Confirmed Lines are cyan. The Target turns gold and brighter.',
+      'Anchors': 'Solid, opaque cubes in the Line colour, tagged 1 and 2.',
+      'Measurement': 'HUD panel, top-left: every number on its own row, step guide at the bottom.',
+      'Far Lines': 'Always drawn, at any distance.',
+    },
+  },
+  B: {
+    name: 'Outlines & world labels',
+    blurb: 'Vanilla-style block outlines that terrain hides. Numbers float above each Line in the world.',
+    answers: {
+      'Blocks': 'Outlines only, like the vanilla block highlight.',
+      'Through walls': 'No, terrain hides them (depth-tested).',
+      'Preview vs Line': 'Preview is white outlines. Each confirmed Line gets its own colour. The Target gets a yellow outline plus a faint fill.',
+      'Anchors': 'Look like any other block, with a floating 1 / 2 tag.',
+      'Measurement': 'In the world, above the Line\'s middle. Every Line shows a short tag (blocks · ratio). The preview and the Target show the full Measurement and step guide.',
+      'Far Lines': 'Not drawn if the player is more than 64 blocks from the Line.',
+    },
+  },
+  C: {
+    name: 'X-ray hybrid & action bar',
+    blurb: 'Outlines that stay strong where visible and turn faint behind terrain. Measurement in one line above the hotbar, step guide as a ruler.',
+    answers: {
+      'Blocks': 'Outlines plus a light fill.',
+      'Through walls': 'Both: full strength where visible, a faint x-ray where terrain covers them.',
+      'Preview vs Line': 'Preview is amber and blinks. Confirmed Lines are soft blue. The Target is white with a stronger fill.',
+      'Anchors': 'A thin beam rising 6 blocks from each Anchor, so they can be found from far away.',
+      'Measurement': 'One line above the hotbar (blocks · distance · bearing · elevation · ratio). The step guide is a ruler of Run boxes above that line. Deltas are left out.',
+      'Far Lines': 'Fade out with distance (full until 64 blocks, faint by 160).',
+    },
+  },
+};
+const KEYS = Object.keys(VARIANTS);
+const STATES = [['placing', 'Placing'], ['target', 'Looking at a Line'], ['idle', 'Idle']];
+const params = new URLSearchParams(location.search);
+let variant = KEYS.includes(params.get('variant')) ? params.get('variant') : 'A';
+let state = STATES.some(s => s[0] === params.get('scene')) ? params.get('scene') : 'placing';
+
+// ---------------------------------------------------------------- world
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9cc8ff);
+scene.fog = new THREE.Fog(0x9cc8ff, 120, 260);
+const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667755, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(30, 60, 20); scene.add(sun);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ color: 0x6fae4a }));
+ground.rotation.x = -Math.PI/2; ground.position.y = 1; scene.add(ground);
+const grid = new THREE.GridHelper(200, 200, 0x5d9a3c, 0x5d9a3c); grid.position.set(0.0, 1.005, 0.0);
+grid.material.transparent = true; grid.material.opacity = .35; scene.add(grid);
+
+const solid = new Map();            // "x,y,z" -> colour
+const put = (x, y, z, c) => solid.set(`${x},${y},${z}`, c);
+// dirt hill in front of Line 1 (seen from the south)
+for (let x = 18; x <= 36; x++) for (let z = 8; z <= 22; z++) {
+  const h = Math.round(8 - Math.hypot(x-27, (z-15)*1.1) * 1.05);
+  for (let y = 1; y <= h; y++) put(x, y, z, y === h ? 0x5f9e3c : 0x86603e);
+}
+// stone wall in front of Line 2
+for (let x = 0; x <= 30; x++) for (let y = 1; y <= 6; y++) put(x, y, 36, (x*7+y*3)%5 ? 0x8a8a8a : 0x777777);
+// trees
+for (const [tx, tz] of [[8, 16], [42, 40], [14, 48]]) {
+  for (let y = 1; y <= 5; y++) put(tx, y, tz, 0x6b4a2b);
+  for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) for (let y = 4; y <= 6; y++)
+    if (!(x === 0 && z === 0 && y < 6) && Math.abs(x)+Math.abs(z) < 4) put(tx+x, y, tz+z, 0x3f7d2a);
+}
+{
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), solid.size);
+  const mtx = new THREE.Matrix4(), col = new THREE.Color();
+  let i = 0;
+  for (const [k, c] of solid) {
+    const [x, y, z] = k.split(',').map(Number);
+    mtx.makeTranslation(x+.5, y+.5, z+.5); mesh.setMatrixAt(i, mtx); mesh.setColorAt(i, col.set(c)); i++;
+  }
+  scene.add(mesh);
+}
+
+// ---------------------------------------------------------------- Lines
+const LINES = [
+  { id: 'L1', label: 'Line 1', a1: [4, 1, 2],     a2: [30, 10, 6] },
+  { id: 'L2', label: 'Line 2', a1: [4, 1, 31],    a2: [28, 1, 21] },
+  { id: 'FAR', label: 'Far Line', a1: [-92, 1, -80], a2: [-68, 9, -62] },
+];
+const PREVIEW = { id: 'P', label: 'Preview', a1: [40, 1, 6], a2: [45, 7, 26], preview: true };
+for (const L of [...LINES, PREVIEW]) { L.blocks = lineBlocks(L.a1, L.a2); L.m = measure(L.a1, L.a2, L.blocks); }
+const PLAYER = new THREE.Vector3(24, 2, 22);
+function distToPlayer(L) {
+  let best = Infinity;
+  for (const b of L.blocks) best = Math.min(best, Math.hypot(b[0]+.5-PLAYER.x, b[1]+.5-PLAYER.y, b[2]+.5-PLAYER.z));
+  return best;
+}
+
+function edgeGeometry(blocks, e = 0.004) {
+  const pos = [];
+  for (const [x, y, z] of blocks) {
+    const a = [x-e, y-e, z-e], b = [x+1+e, y+1+e, z+1+e];
+    const c = [0,1,2,3,4,5,6,7].map(i => [i&1 ? b[0] : a[0], i&2 ? b[1] : a[1], i&4 ? b[2] : a[2]]);
+    for (const [i, j] of [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]]) pos.push(...c[i], ...c[j]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return g;
+}
+function boxes(blocks, mat, scale = 1.006) {
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(scale, scale, scale), mat, blocks.length);
+  const mtx = new THREE.Matrix4();
+  blocks.forEach(([x, y, z], i) => { mtx.makeTranslation(x+.5, y+.5, z+.5); mesh.setMatrixAt(i, mtx); });
+  return mesh;
+}
+const basic = (color, opacity, onTop) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: !onTop, fog: false });
+const lineMat = (color, opacity, onTop) => new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: !onTop, fog: false });
+
+// ---------------------------------------------------------------- building each look
+let overlay = new THREE.Group(); scene.add(overlay);
+let animated = [];          // {mat, base, kind}
+let tags = [];              // {el, pos: Vector3}
+const tagLayer = document.getElementById('tags');
+const hud = document.getElementById('hud');
+const actionbar = document.getElementById('actionbar');
+
+function addTag(html, pos, style = '') {
+  const el = document.createElement('div');
+  el.className = 'tag mc'; el.innerHTML = html; el.style.cssText = style;
+  tagLayer.appendChild(el); tags.push({ el, pos });
+}
+const mid = L => new THREE.Vector3(...L.blocks[Math.floor(L.blocks.length/2)]).addScalar(.5);
+const top = p => new THREE.Vector3(p[0]+.5, p[1]+1.25, p[2]+.5);
+
+function visibleLines() {
+  const ls = [...LINES];
+  if (state === 'placing') ls.push(PREVIEW);
+  return ls;
+}
+const isTarget = L => state === 'target' && L.id === 'L2';
+
+function rebuild() {
+  scene.remove(overlay); overlay = new THREE.Group(); scene.add(overlay);
+  animated = []; tags = []; tagLayer.innerHTML = ''; hud.innerHTML = ''; hud.style.cssText = ''; actionbar.innerHTML = '';
+  ({ A: buildA, B: buildB, C: buildC })[variant]();
+  renderInfo();
+}
+
+// ---- A: glass & corner panel
+function buildA() {
+  for (const L of visibleLines()) {
+    const col = L.preview ? 0xffffff : isTarget(L) ? 0xffcc33 : 0x4fd6ff;
+    const op = L.preview ? .45 : isTarget(L) ? .6 : .35;
+    const body = L.blocks.slice(1, -1);
+    const mat = basic(col, op, true);
+    const mesh = boxes(body, mat); mesh.renderOrder = 10; overlay.add(mesh);
+    if (L.preview) animated.push({ mat, base: op, kind: 'pulse' });
+    for (const [i, a] of [[1, L.a1], [2, L.a2]]) {
+      const am = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(.75), depthTest: false, fog: false }));
+      am.position.set(a[0]+.5, a[1]+.5, a[2]+.5); am.renderOrder = 11; overlay.add(am);
+      addTag(i, top(a), 'font-size:15px;');
+    }
+  }
+  const L = state === 'placing' ? PREVIEW : state === 'target' ? LINES[1] : null;
+  if (!L) return;
+  const m = L.m;
+  hud.style.cssText = 'top:12px;left:12px;background:rgba(0,0,0,.55);padding:8px 10px;min-width:230px;max-width:330px;line-height:1.5';
+  const head = L.preview ? '<span style="color:#fff">Preview</span>' : '<span style="color:#ffcc33">Target · ' + L.label + '</span>';
+  hud.innerHTML = `${head}<br>
+    Blocks&nbsp;&nbsp;&nbsp;&nbsp;${m.count}<br>
+    Distance&nbsp;&nbsp;${m.dist}<br>
+    Δ&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x ${sgn(m.d[0])} y ${sgn(m.d[1])} z ${sgn(m.d[2])}<br>
+    Bearing&nbsp;&nbsp;&nbsp;${m.bearing}° ${m.card}<br>
+    Elevation ${sgn(m.elev)}°<br>
+    Ratio&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${m.ratio}<br>
+    <span style="color:#aaa">Runs</span><br><span style="word-break:break-word;white-space:normal">${m.guide}</span>`;
+}
+
+// ---- B: outlines & world labels
+const PALETTE = { L1: 0x5b8cff, L2: 0xff6fb1, FAR: 0x66dd66 };
+function buildB() {
+  for (const L of visibleLines()) {
+    if (!L.preview && distToPlayer(L) > 64) continue;          // render distance cut
+    const tgt = isTarget(L);
+    const col = L.preview ? 0xffffff : tgt ? 0xffee00 : PALETTE[L.id];
+    const seg = new THREE.LineSegments(edgeGeometry(L.blocks), lineMat(col, 1, false));
+    overlay.add(seg);
+    if (tgt) overlay.add(boxes(L.blocks, basic(0xffee00, .18, false)));
+    addTag('1', top(L.a1), 'font-size:12px;background:rgba(0,0,0,.5);padding:0 4px');
+    addTag('2', top(L.a2), 'font-size:12px;background:rgba(0,0,0,.5);padding:0 4px');
+    const m = L.m;
+    const at = mid(L).add(new THREE.Vector3(0, 2.2, 0));
+    const hex = '#' + new THREE.Color(col).getHexString();
+    if (L.preview || tgt) {
+      addTag(`<div style="border-left:3px solid ${hex};padding-left:6px;line-height:1.45">
+        <b>${m.count}</b> blocks · ${m.dist} · ${m.ratio}<br>
+        ${m.bearing}° ${m.card} · ${sgn(m.elev)}°<br>
+        <span style="color:#ccc">Δ ${sgn(m.d[0])} ${sgn(m.d[1])} ${sgn(m.d[2])}</span><br>
+        <span style="color:#ccc;white-space:normal;display:inline-block;max-width:280px">${m.guide}</span></div>`,
+        at, 'background:rgba(0,0,0,.6);padding:5px 8px;font-size:12px;');
+    } else {
+      addTag(`<span style="color:${hex}">■</span> ${m.count} · ${m.ratio}`, at, 'background:rgba(0,0,0,.45);padding:1px 6px;font-size:12px');
+    }
+  }
+}
+
+// ---- C: x-ray hybrid & action bar
+function buildC() {
+  for (const L of visibleLines()) {
+    const tgt = isTarget(L);
+    const col = L.preview ? 0xffa53a : tgt ? 0xffffff : 0x7fb2ff;
+    const dist = L.preview ? 0 : distToPlayer(L);
+    const fade = dist <= 64 ? 1 : Math.max(.25, 1 - (dist - 64) / 96 * .75);
+    const g = edgeGeometry(L.blocks);
+    const front = lineMat(col, 1 * fade, false);
+    const behind = lineMat(col, .28 * fade, false); behind.depthFunc = THREE.GreaterDepth;
+    overlay.add(new THREE.LineSegments(g, front));
+    const b = new THREE.LineSegments(g, behind); b.renderOrder = 5; overlay.add(b);
+    const fillOp = (tgt ? .32 : .12) * fade;
+    const fill = basic(col, fillOp, false); overlay.add(boxes(L.blocks, fill, .98));
+    if (L.preview) { animated.push({ mat: front, base: 1, kind: 'blink' }); animated.push({ mat: fill, base: fillOp, kind: 'blink' }); }
+    for (const a of [L.a1, L.a2]) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(.18, 6, .18), basic(col, .75 * fade, false));
+      beam.position.set(a[0]+.5, a[1]+3.5, a[2]+.5); overlay.add(beam);
+    }
+  }
+  const L = state === 'placing' ? PREVIEW : state === 'target' ? LINES[1] : null;
+  if (!L) return;
+  const m = L.m;
+  const col = L.preview ? '#ffa53a' : '#ffffff';
+  const total = m.runs.reduce((a, b) => a + b, 0);
+  const maxW = Math.min(560, innerWidth - 40);
+  let ruler = '';
+  m.runs.forEach((r, i) => {
+    ruler += `<span style="display:inline-block;min-width:16px;width:${(r/total*maxW).toFixed(0)}px;border:2px solid ${col};text-align:center;font-size:11px;line-height:16px">${r}</span>`;
+    if (i < m.steps.length) ruler += `<span style="display:inline-block;font-size:10px;color:${col};padding:0 1px">${m.is3d ? m.steps[i] : ''}</span>`;
+  });
+  actionbar.innerHTML = `<div style="text-align:center;margin-bottom:6px;white-space:nowrap">${ruler}</div>
+    <div style="text-align:center"><span style="color:${col}">■</span> ${m.count} blocks · ${m.dist} · ${m.bearing}° ${m.card} · ${sgn(m.elev)}° · ${m.ratio}${L.preview ? '' : ' <span style="color:#aaa">(' + L.label + ')</span>'}</div>`;
+}
+
+// ---------------------------------------------------------------- info + switcher
+function renderInfo() {
+  const v = VARIANTS[variant];
+  document.getElementById('vtitle').textContent = `${variant} · ${v.name}`;
+  document.getElementById('vblurb').textContent = v.blurb;
+  document.getElementById('vlabel').textContent = `${variant} (${v.name})`;
+  document.getElementById('answers').innerHTML = Object.entries(v.answers).map(([k, a]) => `<dt>${k}</dt><dd>${a}</dd>`).join('');
+  document.getElementById('states').innerHTML = STATES.map(([k, t], i) =>
+    `<button data-s="${k}" class="${k === state ? 'on' : ''}">${i+1} · ${t}</button>`).join('');
+  document.querySelectorAll('#states button').forEach(b => b.onclick = () => setState(b.dataset.s));
+}
+function syncURL() {
+  const p = new URLSearchParams(location.search); p.set('variant', variant); p.set('scene', state);
+  history.replaceState(null, '', '?' + p);
+}
+function setVariant(k) { variant = k; syncURL(); rebuild(); }
+function setState(s) { state = s; syncURL(); rebuild(); }
+const cycle = d => setVariant(KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length]);
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  else if (e.key === 'ArrowRight') cycle(1);
+  else if (['1','2','3'].includes(e.key)) setState(STATES[+e.key - 1][0]);
+});
+
+// ---------------------------------------------------------------- camera (simple orbit around the player)
+let yaw = 0.25, pitch = 0.16, radius = 40;
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; renderer.domElement.setPointerCapture(e.pointerId); });
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * .006; pitch = Math.min(1.45, Math.max(.05, pitch + (e.clientY - drag[1]) * .006));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('pointerup', () => drag = null);
+renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); radius = Math.min(260, Math.max(8, radius * (1 + Math.sign(e.deltaY) * .1))); }, { passive: false });
+
+function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (variant === 'C') rebuild(); }
+addEventListener('resize', resize);
+
+const v3 = new THREE.Vector3();
+function frame(t) {
+  camera.position.set(PLAYER.x + radius * Math.cos(pitch) * Math.sin(yaw), PLAYER.y + radius * Math.sin(pitch), PLAYER.z + radius * Math.cos(pitch) * Math.cos(yaw));
+  camera.lookAt(PLAYER);
+  for (const a of animated) {
+    if (a.kind === 'pulse') a.mat.opacity = a.base * (.55 + .45 * Math.sin(t / 250));
+    else a.mat.opacity = Math.floor(t / 450) % 2 ? a.base : a.base * .35;
+  }
+  renderer.render(scene, camera);
+  for (const { el, pos } of tags) {
+    v3.copy(pos).project(camera);
+    if (v3.z > 1) { el.style.display = 'none'; continue; }
+    el.style.display = '';
+    el.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
+    el.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
+  }
+  requestAnimationFrame(frame);
+}
+resize(); rebuild(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
