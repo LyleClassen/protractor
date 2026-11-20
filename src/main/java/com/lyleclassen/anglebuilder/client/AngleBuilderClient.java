@@ -22,22 +22,28 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.common.NeoForge;
 
-/** All client state: pending Anchor, preview, Target, Hide toggle and the Clear confirm. */
+/**
+ * All client state: pending Anchor, preview, Target and Hide toggle. The Protractor is driven
+ * here: right-click sets an Anchor, sneak + right-click cancels a pending Anchor or deletes the
+ * Target, and a quick second sneak + right-click clears every Line in the dimension.
+ */
 public final class AngleBuilderClient {
-	private static final long CLEAR_WINDOW_MS = 2000;
+	private static final long DOUBLE_CLICK_MS = 400;
 
 	static final LineStore STORE = new LineStore();
 	@Nullable static Pos anchor1;
 	@Nullable static SavedLine preview;
 	@Nullable static SavedLine target;
 	static boolean hidden;
-	private static long clearArmedAt;
-	private static int clearArmedCount;
+	private static long lastSneakClickAt;
+	/** Whether the use key was down at the end of the last tick, to ignore held-button repeats. */
+	private static boolean useHeldLastTick;
 	@Nullable private static String dimension;
 
 	private AngleBuilderClient() {}
@@ -50,6 +56,7 @@ public final class AngleBuilderClient {
 		NeoForge.EVENT_BUS.addListener(AngleBuilderClient::onLogin);
 		NeoForge.EVENT_BUS.addListener(AngleBuilderClient::onLogout);
 		NeoForge.EVENT_BUS.addListener(AngleBuilderClient::onRenderLevel);
+		NeoForge.EVENT_BUS.addListener(AngleBuilderClient::onUse);
 	}
 
 	private static void registerGui(RegisterGuiLayersEvent event) {
@@ -77,7 +84,7 @@ public final class AngleBuilderClient {
 		preview = null;
 		target = null;
 		hidden = false;
-		clearArmedAt = 0;
+		lastSneakClickAt = 0;
 		dimension = null;
 	}
 
@@ -100,31 +107,58 @@ public final class AngleBuilderClient {
 			target = null;
 		}
 
-		while (Keys.ANCHOR.consumeClick()) onAnchorKey(mc);
-		while (Keys.CANCEL.consumeClick()) {
-			anchor1 = null;
-			preview = null;
-		}
 		while (Keys.HIDE.consumeClick()) {
 			hidden = !hidden;
 			mc.gui.setOverlayMessage(Component.translatable(hidden ? "anglebuilder.hidden" : "anglebuilder.shown"), false);
 		}
-		while (Keys.CLEAR.consumeClick()) onClearKey(mc);
-		if (clearArmedAt != 0 && System.currentTimeMillis() - clearArmedAt > CLEAR_WINDOW_MS) clearArmedAt = 0;
 
 		updatePreview(mc);
 		updateTarget(mc);
+		useHeldLastTick = mc.options.keyUse.isDown();
+	}
 
-		while (Keys.DELETE.consumeClick()) {
-			if (target != null && anchor1 == null && !hidden) {
-				STORE.remove(dimension(), target);
-				target = null;
-				updateTarget(mc);
-			}
+	/**
+	 * Right-click with the Protractor. Cancelled before vanilla sees it, so the click never opens a
+	 * chest or reaches the server; holding the button down doesn't repeat.
+	 */
+	private static void onUse(InputEvent.InteractionKeyMappingTriggered event) {
+		if (!event.isUseItem()) return;
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null || mc.level == null) return;
+		if (!mc.player.getItemInHand(event.getHand()).is(AngleBuilder.PROTRACTOR.get())) return;
+		event.setCanceled(true);
+		event.setSwingHand(false);
+		if (useHeldLastTick) return;
+		if (mc.player.isShiftKeyDown()) onSneakUse(mc);
+		else onAnchorUse(mc);
+	}
+
+	private static void onSneakUse(Minecraft mc) {
+		long now = System.currentTimeMillis();
+		if (lastSneakClickAt != 0 && now - lastSneakClickAt <= DOUBLE_CLICK_MS) {
+			lastSneakClickAt = 0;
+			anchor1 = null;
+			preview = null;
+			int removed = STORE.clear(dimension());
+			target = null;
+			mc.gui.setOverlayMessage(Component.translatable("anglebuilder.cleared", removed), false);
+			return;
+		}
+		lastSneakClickAt = now;
+		if (anchor1 != null) {
+			anchor1 = null;
+			preview = null;
+			return;
+		}
+		updateTarget(mc);
+		if (target != null) {
+			STORE.remove(dimension(), target);
+			target = null;
+			updateTarget(mc);
 		}
 	}
 
-	private static void onAnchorKey(Minecraft mc) {
+	private static void onAnchorUse(Minecraft mc) {
 		hidden = false;
 		BlockPos aimed = aimedAnchor(mc);
 		if (aimed == null) return;
@@ -139,25 +173,6 @@ public final class AngleBuilderClient {
 		STORE.add(dimension(), new Line(anchor1, second));
 		anchor1 = null;
 		preview = null;
-	}
-
-	private static void onClearKey(Minecraft mc) {
-		int count = currentLines().size();
-		long now = System.currentTimeMillis();
-		if (clearArmedAt != 0 && now - clearArmedAt <= CLEAR_WINDOW_MS) {
-			int removed = STORE.clear(dimension());
-			clearArmedAt = 0;
-			target = null;
-			mc.gui.setOverlayMessage(Component.translatable("anglebuilder.cleared", removed), false);
-			return;
-		}
-		if (count == 0) {
-			mc.gui.setOverlayMessage(Component.translatable("anglebuilder.clear_none"), false);
-			return;
-		}
-		clearArmedAt = now;
-		clearArmedCount = count;
-		mc.gui.setOverlayMessage(Component.translatable("anglebuilder.clear_prompt", clearArmedCount), false);
 	}
 
 	private static void updatePreview(Minecraft mc) {

@@ -1,14 +1,9 @@
 {
+	"item.anglebuilder.protractor": "Protractor",
 	"key.categories.anglebuilder": "Angle Builder",
-	"key.anglebuilder.anchor": "Set Anchor",
-	"key.anglebuilder.cancel": "Cancel Anchor",
 	"key.anglebuilder.snap": "Snap (hold)",
-	"key.anglebuilder.delete": "Delete Target Line",
-	"key.anglebuilder.clear": "Clear Lines in Dimension",
 	"key.anglebuilder.hide": "Hide/Show Lines",
 	"anglebuilder.hidden": "Angle Builder: Lines hidden",
 	"anglebuilder.shown": "Angle Builder: Lines shown",
-	"anglebuilder.clear_prompt": "Press again to clear %s Lines",
-	"anglebuilder.clear_none": "No Lines to clear here",
 	"anglebuilder.cleared": "Cleared %s Lines"
 }
