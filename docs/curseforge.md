@@ -17,15 +17,13 @@
 
 ## Releasing a version
 
-1. Set `mod_version` in `gradle.properties`.
-2. Rename the `## [Unreleased]` section of `CHANGELOG.md` to `## [x.y.z] - YYYY-MM-DD`.
-3. Commit, then tag and push:
-   ```sh
-   git tag vx.y.z
-   git push origin main vx.y.z
-   ```
+1. In a pull request, set `mod_version` in `gradle.properties`.
+2. In the same pull request, rename the `## [Unreleased]` section of `CHANGELOG.md` to `## [x.y.z] - YYYY-MM-DD`.
+3. Merge it into `main`.
 
-[`.github/workflows/release.yml`](../.github/workflows/release.yml) then builds the jar and checks that the tag matches `mod_version`. It uploads the jar to CurseForge and to a GitHub Release, using that version's changelog section as the release notes. Versions with `-alpha` or `-beta` in them are published as alpha or beta files.
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) runs on every push to `main`. If there is no `vx.y.z` tag for the current `mod_version` yet, it builds the jar and uploads it to CurseForge and to a new GitHub Release, which creates the tag. The `## [x.y.z]` changelog section becomes the release notes. If the tag already exists, the workflow publishes nothing, so merges that don't change `mod_version` are not released. Versions with `-alpha` or `-beta` in them are published as alpha or beta files.
+
+To retry a failed release, fix the cause and run the workflow again from the Actions tab (Run workflow on `main`).
 
 ---
 
