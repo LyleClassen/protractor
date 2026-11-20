@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/LyleClassen/protractor/actions/workflows/build.yml"><img src="https://github.com/LyleClassen/protractor/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="https://www.curseforge.com/minecraft/mc-mods/protractor"><img src="https://cf.way2muchnoise.eu/short_1818542_downloads.svg" alt="CurseForge downloads"></a>
   <img src="https://img.shields.io/badge/Minecraft-1.21.1-62B47A" alt="Minecraft 1.21.1">
   <img src="https://img.shields.io/badge/NeoForge-21.1.x-E4A33B" alt="NeoForge 21.1.x">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License"></a>
