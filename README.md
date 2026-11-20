@@ -20,6 +20,11 @@ further: pick any two points and it shows you exactly which blocks make up
 the line between them, at any angle in any direction, so you can build
 diagonals, slopes and angled walls without guesswork.
 
+<p align="center">
+  <img src="docs/protractor_ingame.jpg" alt="Two Lines drawn with Protractor: a yellow one along the ground and a green one climbing a house wall, with the Measurement shown above the hotbar" width="800">
+</p>
+<p align="center"><em>Two saved Lines, one along the ground and one up a wall. The Measurement above the hotbar shows the Target's block count, distance, deltas, bearing, elevation and ratio.</em></p>
+
 ## Download
 
 Get the jar from [GitHub Releases](https://github.com/LyleClassen/protractor/releases) and drop it into your `mods` folder.
@@ -30,11 +35,9 @@ Protractor adds an item, so **on multiplayer it must be installed on the server 
 
 Craft a **Protractor** from three glass panes in an arc over a tinted glass, on a row of three glass:
 
-```
-·  P  ·      P = Glass Pane
-P  T  P      T = Tinted Glass
-G  G  G      G = Glass
-```
+<p align="center">
+  <img src="docs/protractor_recipe.png" alt="Crafting recipe: a glass pane top centre; glass pane, tinted glass, glass pane in the middle row; three glass along the bottom" width="372">
+</p>
 
 | Action | What it does |
 | --- | --- |
@@ -74,7 +77,14 @@ Requires JDK 21.
 
 To regenerate the logo after changing the item texture, run `python3 tools/logo/make_logo.py`.
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Contributing
+
+Contributions are welcome! All changes go in through pull requests: fork the repo, make your change on a branch, and open a PR against `main`. Only the maintainers merge into `main`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the details.
+
+## Contributors
+
+- [Lyle Classen](https://github.com/LyleClassen), creator and maintainer
+- [Claude](https://www.anthropic.com/claude), Anthropic's AI model, which pairs with Lyle through [Claude Code](https://claude.com/claude-code) on design, code and docs. Commits it helped write carry a `Co-Authored-By: Claude` trailer.
 
 ## Acknowledgements
 

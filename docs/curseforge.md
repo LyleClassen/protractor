@@ -39,9 +39,13 @@ See exactly which blocks make a straight line between any two points, at any ang
 
 Mods like Measurements show the distance between two points along the N/S/E/W axes. Protractor goes further: pick any two points and it shows you exactly which blocks make up the line between them, at any angle in any direction.
 
+![Two Lines drawn with Protractor, one along the ground and one up a house wall](https://raw.githubusercontent.com/LyleClassen/protractor/main/docs/protractor_ingame.jpg)
+
 ### How to use it
 
 Craft a **Protractor**: a glass pane on top, then pane, tinted glass, pane, then three glass along the bottom.
+
+![Protractor crafting recipe](https://raw.githubusercontent.com/LyleClassen/protractor/main/docs/protractor_recipe.png)
 
 - **Right-click** a block to set the first Anchor. A preview follows your crosshair. Right-click again to save the Line.
 - **Sneak + right-click** cancels a pending Anchor, or deletes the Line you're looking at.
@@ -63,4 +67,6 @@ Minecraft 1.21.1, NeoForge 21.1.x. Made with All The Mods 10 in mind. **Install 
 
 Inspired by [Measurements](https://github.com/Mrbysco/Measurements) by **Mrbysco**. Thank you!
 
-Source code and issues are on [GitHub](https://github.com/LyleClassen/protractor), under the MIT License.
+Made by **Lyle Classen**, with **Claude** (Anthropic's AI model, via Claude Code) as a contributor on design, code and docs.
+
+Source code and issues are on [GitHub](https://github.com/LyleClassen/protractor), under the MIT License. Contributions are welcome as pull requests.
