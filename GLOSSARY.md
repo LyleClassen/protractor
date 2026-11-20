@@ -21,7 +21,7 @@ A position of a Line that already holds a block that would have to be broken bef
 _Avoid_: placed, done, built, occupied
 
 **Target**:
-The one saved Line the player is currently looking at. Deleting acts on the Target, and its Measurement is the one shown.
+The one saved Line the player is aiming at, even if terrain is in the way. Deleting acts on the Target, and its Measurement is the one shown.
 _Avoid_: selected, focused, active, current
 
 **Step**:
