@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placing Anchors</title>
+<style>
+  :root { --bg:#f7f6f3; --panel:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e3e1dc; --accent:#2f6fde; --warn:#d6452f; --ok:#2e8b57; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:0 0 8px; }
+  h3 { font-size:15px; margin:0 0 6px; }
+  .banner { display:inline-block; background:#fff3cd; border:1px solid #f0d58a; border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; margin-bottom:10px; }
+  .intro { color:var(--muted); max-width:860px; margin:0 0 16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .grid2 { display:grid; grid-template-columns:3fr 2fr; gap:16px; }
+  @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
+  canvas { width:100%; aspect-ratio:2/1; background:#cfe6f7; border-radius:8px; display:block; cursor:crosshair; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+  .row .lbl { font-size:13px; color:var(--muted); min-width:90px; }
+  button { font:inherit; font-size:14px; padding:6px 12px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.done { opacity:.45; }
+  button:disabled { opacity:.35; cursor:default; }
+  .scheme-desc { font-size:14px; background:#f3f5fa; border-radius:8px; padding:10px 12px; margin:8px 0 0; }
+  .scheme-desc ul { margin:4px 0 0; padding-left:18px; }
+  dl.state { display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:0; font-size:14px; }
+  dl.state dt { color:var(--muted); }
+  dl.state dd { margin:0; font-weight:600; font-variant-numeric:tabular-nums; }
+  .changed { background:#fff3cd; }
+  .log { font-size:13px; max-height:260px; overflow:auto; border-top:1px solid var(--line); margin-top:10px; padding-top:8px; }
+  .log div { padding:2px 0; }
+  .log .srv { color:var(--warn); font-weight:600; }
+  .log .ok { color:var(--ok); }
+  .log .muted { color:var(--muted); }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .steps { display:flex; flex-direction:column; gap:6px; align-items:flex-start; margin-top:8px; }
+  .legend { font-size:13px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+  .hud { font-size:13px; font-weight:600; margin-top:6px; min-height:20px; }
+  kbd { font:12px ui-monospace, monospace; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; background:#fff; }
+</style>
+</head>
+<body>
+<main>
+  <span class="banner">PROTOTYPE · throwaway · wayfinder ticket #7</span>
+  <h1>How does a player place Anchors?</h1>
+  <p class="intro">
+    The mod runs only on your computer, so it can't add its own item. Something you already have has to set the two <b>Anchors</b> of a <b>Line</b>.
+    This page compares three ways to do that. All three work in the same small world, seen from the side.
+    <b>Move your mouse over the world to choose the block you're looking at</b>, then press the keys and clicks below.
+    Watch the red lines in the log. They show when a click still reaches the server, which breaks or places a real block in a real world.
+  </p>
+
+  <div class="grid2">
+    <div class="card">
+      <canvas id="world" width="768" height="384"></canvas>
+      <div class="hud" id="hud"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:#2f6fde"></span>Confirmed Line</span>
+        <span><span class="sw" style="background:#f0a020"></span>Preview (follows your look)</span>
+        <span><span class="sw" style="background:#d6452f"></span>Anchor</span>
+        <span><span class="sw" style="border:2px dashed #555"></span>Normal reach (4.5 blocks)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What's happening</h2>
+      <dl class="state" id="state"></dl>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Free play</h2>
+    <div class="row"><span class="lbl">Scheme</span><span id="schemes"></span></div>
+    <div class="scheme-desc" id="schemeDesc"></div>
+    <div class="row"><span class="lbl">Holding</span><span id="items"></span></div>
+    <div class="row"><span class="lbl">Do</span><span id="actions"></span></div>
+    <div class="row"><span class="lbl">Settings</span><span id="settings"></span></div>
+    <div class="row"><span class="lbl"></span><button id="reset">Reset world</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Walkthroughs</h2>
+    <div class="tabs" id="tabs"></div>
+    <div id="walk"></div>
+  </div>
+</main>
+
+<script>
+/* ===================== Portable logic module (no DOM) ===================== */
+const AnchorInput = (() => {
+  const W = 24, H = 12;
+  const EYE = { x: 2.5, y: 3.6 };     // player stands at x=2 on ground (feet y=2)
+  const REACH = 4.5, FAR_REACH = 64;
+
+  function freshWorld() {
+    const solid = new Set();
+    for (let x = 0; x < W; x++) { solid.add(`${x},0`); solid.add(`${x},1`); }
+    for (let y = 2; y <= 6; y++) solid.add(`14,${y}`);   // tall pillar
+    for (let y = 2; y <= 3; y++) solid.add(`20,${y}`);   // short pillar
+    solid.add(`5,2`);                                     // a block near the player
+    return solid;
+  }
+
+  function initial(scheme) {
+    return {
+      scheme,                 // 'key' | 'tool' | 'mode'
+      held: 'pickaxe',        // 'stick' | 'pickaxe' | 'dirt'
+      measuring: false,       // scheme 'mode' only
+      look: null,             // cell under the mouse {x,y}
+      pending: null,          // first Anchor {x,y}
+      lines: [],              // [{a,b}]
+      solid: freshWorld(),
+      settings: { anchorOn: 'block', far: true, chain: false },
+    };
+  }
+
+  const key = p => `${p.x},${p.y}`;
+  const dist = p => Math.hypot(p.x + 0.5 - EYE.x, p.y + 0.5 - EYE.y);
+
+  // What the crosshair actually hits. Minecraft can't target air.
+  function target(s, normalOnly) {
+    if (!s.look || !s.solid.has(key(s.look))) return { hit: null, why: 'looking at air' };
+    const d = dist(s.look);
+    const max = normalOnly || !s.settings.far ? REACH : FAR_REACH;
+    if (d > max) return { hit: null, why: `too far (${d.toFixed(1)} blocks)` };
+    return { hit: s.look, d };
+  }
+
+  // Where the Anchor lands for a hit block.
+  function anchorFor(s, hit) {
+    if (s.settings.anchorOn === 'block') return hit;
+    return { x: hit.x, y: hit.y + 1 }; // the space on top of the block
+  }
+
+  function bresenham2(a, b) {
+    const out = []; let x = a.x, y = a.y;
+    const dx = Math.abs(b.x - a.x), dy = Math.abs(b.y - a.y);
+    const sx = Math.sign(b.x - a.x), sy = Math.sign(b.y - a.y);
+    let err = dx - dy;
+    for (;;) { out.push({ x, y }); if (x === b.x && y === b.y) break;
+      const e2 = 2 * err; if (e2 > -dy) { err -= dy; x += sx; } if (e2 < dx) { err += dx; y += sy; } }
+    return out;
+  }
+
+  function measure(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    return {
+      blocks: Math.max(Math.abs(dx), Math.abs(dy)) + 1,
+      length: Math.hypot(dx, dy),
+      angle: Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI,
+    };
+  }
+
+  // ---- shared building blocks for the schemes ----
+  function setAnchor(s, log) {
+    const t = target(s, false);
+    if (!t.hit) { log.push({ t: 'muted', m: `Can't set an Anchor: ${t.why}.` }); return s; }
+    const p = anchorFor(s, t.hit);
+    if (!s.pending) {
+      log.push({ t: 'ok', m: `First Anchor set at (${p.x}, ${p.y}). The preview now follows your look.` });
+      return { ...s, pending: p };
+    }
+    if (p.x === s.pending.x && p.y === s.pending.y) {
+      log.push({ t: 'muted', m: 'Second Anchor is the same as the first, so nothing happened.' });
+      return s;
+    }
+    const m = measure(s.pending, p);
+    log.push({ t: 'ok', m: `Line confirmed (${s.pending.x},${s.pending.y}) → (${p.x},${p.y}): ${m.blocks} blocks, ${m.angle.toFixed(1)}°.` });
+    const lines = [...s.lines, { a: s.pending, b: p }];
+    return { ...s, lines, pending: s.settings.chain ? p : null };
+  }
+  function cancel(s, log) {
+    if (s.pending) { log.push({ t: 'ok', m: 'Pending Anchor dropped. No Line was made.' }); return { ...s, pending: null }; }
+    log.push({ t: 'muted', m: 'Nothing pending to cancel.' }); return s;
+  }
+  // A click that is NOT swallowed goes to the server like vanilla.
+  function vanillaClick(s, button, log) {
+    const t = target(s, true); // the server only respects normal reach
+    if (button === 'left') {
+      if (!t.hit) { log.push({ t: 'muted', m: 'Server: you swing at nothing.' }); return s; }
+      if (t.hit.y <= 0) { log.push({ t: 'srv', m: `Server: you hit bedrock at (${t.hit.x},${t.hit.y}).` }); return s; }
+      const solid = new Set(s.solid); solid.delete(key(t.hit));
+      log.push({ t: 'srv', m: `Server: you BROKE the block at (${t.hit.x},${t.hit.y}).` });
+      return { ...s, solid };
+    }
+    // right click
+    if (!t.hit) { log.push({ t: 'muted', m: 'Server: you use the item in the air.' }); return s; }
+    if (s.held === 'dirt') {
+      const p = { x: t.hit.x, y: t.hit.y + 1 };
+      if (s.solid.has(key(p)) || p.y >= H) { log.push({ t: 'muted', m: 'Server: no room to place.' }); return s; }
+      const solid = new Set(s.solid); solid.add(key(p));
+      log.push({ t: 'srv', m: `Server: you PLACED dirt at (${p.x},${p.y}).` });
+      return { ...s, solid };
+    }
+    log.push({ t: 'muted', m: `Server: you right-click the block with a ${s.held}. Nothing happens, but the server is told.` });
+    return s;
+  }
+
+  // ---- the three schemes ----
+  const schemes = {
+    key: {
+      name: 'Anchor key',
+      handle(s, ev, log) {
+        switch (ev.type) {
+          case 'anchorKey': return setAnchor(s, log);
+          case 'cancelKey': return cancel(s, log);
+          case 'click': return vanillaClick(s, ev.button, log);
+          default: return null;
+        }
+      },
+    },
+    tool: {
+      name: 'Measuring item',
+      handle(s, ev, log) {
+        if (ev.type === 'click' && s.held === 'stick') {
+          if (ev.button === 'left') { log.push({ t: 'muted', m: 'Mod caught the left click (holding the stick). Server sees nothing.' }); return setAnchor(s, log); }
+          log.push({ t: 'muted', m: 'Mod caught the right click (holding the stick). Server sees nothing.' });
+          return cancel(s, log);
+        }
+        if (ev.type === 'click') return vanillaClick(s, ev.button, log);
+        return null;
+      },
+    },
+    mode: {
+      name: 'Measure mode',
+      handle(s, ev, log) {
+        if (ev.type === 'modeKey') {
+          const on = !s.measuring;
+          log.push({ t: 'ok', m: on ? 'Measure mode ON. Every click now goes to the mod.' : 'Measure mode OFF. Clicks work normally again.' });
+          if (!on && s.pending) log.push({ t: 'muted', m: 'Leaving the mode dropped the pending Anchor.' });
+          return { ...s, measuring: on, pending: on ? s.pending : null };
+        }
+        if (ev.type === 'click' && s.measuring) {
+          log.push({ t: 'muted', m: `Mod caught the ${ev.button} click (measure mode). Server sees nothing.` });
+          return ev.button === 'left' ? setAnchor(s, log) : cancel(s, log);
+        }
+        if (ev.type === 'click') return vanillaClick(s, ev.button, log);
+        return null;
+      },
+    },
+  };
+
+  // (state, event) -> { state, log }
+  function step(s, ev) {
+    const log = [];
+    if (ev.type === 'look') return { state: { ...s, look: ev.at }, log };
+    if (ev.type === 'hold') { log.push({ t: 'muted', m: `Now holding: ${ev.item}.` }); return { state: { ...s, held: ev.item }, log }; }
+    if (ev.type === 'setting') return { state: { ...s, settings: { ...s.settings, [ev.name]: ev.value } }, log };
+    const next = schemes[s.scheme].handle(s, ev, log);
+    if (next === null) { log.push({ t: 'muted', m: 'That key does nothing in this scheme.' }); return { state: s, log }; }
+    return { state: next, log };
+  }
+
+  // Is the preview visible right now? (tool scheme hides it when the stick isn't in hand)
+  function previewTo(s) {
+    if (!s.pending) return null;
+    if (s.scheme === 'tool' && s.held !== 'stick') return null;
+    const t = target(s, false);
+    return t.hit ? anchorFor(s, t.hit) : null;
+  }
+
+  return { W, H, EYE, REACH, initial, step, target, anchorFor, bresenham2, measure, previewTo, schemes };
+})();
+
+/* ===================== Throwaway page shell ===================== */
+const A = AnchorInput;
+let state = A.initial('key');
+let logLines = [];
+let prevRendered = {};
+
+const SCHEME_TEXT = {
+  key: `<b>Anchor key</b>: look at a block and press <kbd>V</kbd>. The first press sets Anchor 1, the second sets Anchor 2 and confirms the Line. <kbd>B</kbd> cancels.
+        <ul><li>Clicks are never touched, so mining and building keep working with any item.</li>
+        <li>Needs 1–2 free keys.</li></ul>`,
+  tool: `<b>Measuring item</b>: hold a vanilla item chosen in config (here a <b>stick</b>). Left click sets an Anchor, right click cancels.
+        <ul><li>The mod only catches clicks while you hold that item. Other items behave normally.</li>
+        <li>You need the item in your hotbar. Switch away and the preview hides, but the pending Anchor stays.</li></ul>`,
+  mode: `<b>Measure mode</b>: <kbd>M</kbd> turns the mode on or off. While it's on, left click sets an Anchor and right click cancels, <i>whatever you hold</i>.
+        <ul><li>The HUD shows when the mode is on.</li>
+        <li>While it's on, you can't mine or build.</li></ul>`,
+};
+
+function dispatch(ev) {
+  const r = A.step(state, ev);
+  state = r.state;
+  if (r.log.length) logLines = [...r.log.map(l => ({ ...l, n: Date.now() })), ...logLines].slice(0, 60);
+  render();
+}
+
+function resetTo(scheme, extra = {}) {
+  state = { ...A.initial(scheme), ...extra, settings: { ...A.initial(scheme).settings, ...(extra.settings || {}) } };
+  logLines = [{ t: 'muted', m: `World reset. Scheme: ${A.schemes[scheme].name}.` }];
+  render();
+}
+
+// ---- canvas ----
+const cv = document.getElementById('world'), cx = cv.getContext('2d');
+const CS = 32;
+const toPx = (x, y) => [x * CS, (A.H - 1 - y) * CS];
+
+cv.addEventListener('mousemove', e => {
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * A.W);
+  const y = A.H - 1 - Math.floor((e.clientY - r.top) / r.height * A.H);
+  if (!state.look || state.look.x !== x || state.look.y !== y) dispatch({ type: 'look', at: { x, y } });
+});
+cv.addEventListener('mouseleave', () => dispatch({ type: 'look', at: null }));
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => { e.preventDefault(); dispatch({ type: 'click', button: e.button === 2 ? 'right' : 'left' }); });
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === 'v') dispatch({ type: 'anchorKey' });
+  else if (k === 'b') dispatch({ type: 'cancelKey' });
+  else if (k === 'm') dispatch({ type: 'modeKey' });
+  else if (k === '1') dispatch({ type: 'hold', item: 'stick' });
+  else if (k === '2') dispatch({ type: 'hold', item: 'pickaxe' });
+  else if (k === '3') dispatch({ type: 'hold', item: 'dirt' });
+});
+
+function drawCells(cells, color) {
+  cx.fillStyle = color;
+  for (const c of cells) { const [px, py] = toPx(c.x, c.y); cx.fillRect(px + 3, py + 3, CS - 6, CS - 6); }
+}
+function drawAnchor(p) {
+  const [px, py] = toPx(p.x, p.y);
+  cx.strokeStyle = '#d6452f'; cx.lineWidth = 3; cx.strokeRect(px + 2, py + 2, CS - 4, CS - 4);
+}
+
+function drawWorld() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // blocks
+  for (let x = 0; x < A.W; x++) for (let y = 0; y < A.H; y++) {
+    if (!state.solid.has(`${x},${y}`)) continue;
+    const [px, py] = toPx(x, y);
+    cx.fillStyle = y === 0 ? '#555' : (y === 1 && !(x === 5) ? '#6b8e3a' : '#8a6a45');
+    if (y === 1) cx.fillStyle = '#6b8e3a';
+    if (y >= 2) cx.fillStyle = '#8f8f8f';
+    cx.fillRect(px, py, CS, CS);
+    cx.strokeStyle = 'rgba(0,0,0,.15)'; cx.lineWidth = 1; cx.strokeRect(px + .5, py + .5, CS - 1, CS - 1);
+  }
+  // player
+  { const [px, py] = toPx(2, 3);
+    cx.fillStyle = '#3a6ea5'; cx.fillRect(px + 8, py + CS, CS - 16, CS - 2);
+    cx.fillStyle = '#e0b48a'; cx.fillRect(px + 7, py + 6, CS - 14, CS - 8);
+    cx.fillStyle = '#222'; cx.font = '11px system-ui'; cx.fillText('you', px + 6, py + 2 + 2); }
+  // reach circle
+  cx.setLineDash([6, 5]); cx.strokeStyle = '#555'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.arc(A.EYE.x * CS, (A.H - A.EYE.y) * CS, A.REACH * CS, 0, Math.PI * 2); cx.stroke(); cx.setLineDash([]);
+  // lines
+  for (const l of state.lines) drawCells(A.bresenham2(l.a, l.b), 'rgba(47,111,222,.55)');
+  for (const l of state.lines) { drawAnchor(l.a); drawAnchor(l.b); }
+  // preview
+  const to = A.previewTo(state);
+  if (state.pending && to) drawCells(A.bresenham2(state.pending, to), 'rgba(240,160,32,.6)');
+  if (state.pending) drawAnchor(state.pending);
+  // look outline
+  if (state.look) {
+    const t = A.target(state, false);
+    const [px, py] = toPx(state.look.x, state.look.y);
+    cx.strokeStyle = t.hit ? '#111' : 'rgba(0,0,0,.25)'; cx.lineWidth = 2; cx.strokeRect(px + 1, py + 1, CS - 2, CS - 2);
+    if (t.hit && state.settings.anchorOn === 'above') {
+      const a = A.anchorFor(state, t.hit); const [ax, ay] = toPx(a.x, a.y);
+      cx.setLineDash([3, 3]); cx.strokeRect(ax + 4, ay + 4, CS - 8, CS - 8); cx.setLineDash([]);
+    }
+  }
+}
+
+// ---- panels ----
+function render() {
+  drawWorld();
+  const t = A.target(state, false);
+  const to = A.previewTo(state);
+  let preview = '—';
+  if (state.pending && to) { const m = A.measure(state.pending, to); preview = `${m.blocks} blocks · ${m.length.toFixed(1)} long · ${m.angle.toFixed(1)}°`; }
+  else if (state.pending && state.scheme === 'tool' && state.held !== 'stick') preview = 'hidden (stick not in hand)';
+  else if (state.pending) preview = `no target (${t.why})`;
+  const rows = {
+    'Scheme': A.schemes[state.scheme].name,
+    'Holding': state.held,
+    ...(state.scheme === 'mode' ? { 'Measure mode': state.measuring ? 'ON' : 'off' } : {}),
+    'Looking at': state.look ? `(${state.look.x}, ${state.look.y}) · ${t.hit ? `block, ${t.d.toFixed(1)} away` : t.why}` : '—',
+    'First Anchor': state.pending ? `(${state.pending.x}, ${state.pending.y})` : '— (none yet)',
+    'Preview': preview,
+    'Lines': state.lines.length ? state.lines.map(l => `(${l.a.x},${l.a.y})→(${l.b.x},${l.b.y})`).join(', ') : 'none',
+    'Anchor goes on': state.settings.anchorOn === 'block' ? 'the block you look at' : 'the space on top of it',
+    'Far targeting': state.settings.far ? 'on (up to 64)' : 'off (normal reach)',
+    'Chain Lines': state.settings.chain ? 'on' : 'off',
+  };
+  document.getElementById('state').innerHTML = Object.entries(rows).map(([k, v]) =>
+    `<dt>${k}</dt><dd class="${prevRendered[k] !== undefined && prevRendered[k] !== v && k !== 'Looking at' && k !== 'Preview' ? 'changed' : ''}">${v}</dd>`).join('');
+  prevRendered = rows;
+  document.getElementById('log').innerHTML = logLines.map(l => `<div class="${l.t}">${l.m}</div>`).join('');
+
+  const hud = [];
+  if (state.scheme === 'mode' && state.measuring) hud.push('HUD: ✎ Measuring (M to exit)');
+  if (state.pending) hud.push('HUD: Anchor 1 set, waiting for Anchor 2');
+  document.getElementById('hud').textContent = hud.join('  ·  ');
+
+  document.getElementById('schemes').innerHTML = Object.entries(A.schemes).map(([id, s]) =>
+    `<button data-scheme="${id}" class="${state.scheme === id ? 'on' : ''}">${s.name}</button>`).join(' ');
+  document.getElementById('schemeDesc').innerHTML = SCHEME_TEXT[state.scheme];
+  document.getElementById('items').innerHTML = ['stick', 'pickaxe', 'dirt'].map((it, i) =>
+    `<button data-hold="${it}" class="${state.held === it ? 'on' : ''}">${it} <kbd>${i + 1}</kbd></button>`).join(' ');
+  const acts = [['Left click', { type: 'click', button: 'left' }], ['Right click', { type: 'click', button: 'right' }]];
+  if (state.scheme === 'key') acts.push(['Anchor key V', { type: 'anchorKey' }], ['Cancel key B', { type: 'cancelKey' }]);
+  if (state.scheme === 'mode') acts.push(['Mode key M', { type: 'modeKey' }]);
+  document.getElementById('actions').innerHTML = acts.map(([l, ev], i) => `<button data-act="${i}">${l}</button>`).join(' ') +
+    ' <span style="font-size:13px;color:var(--muted)">(or click the world / press the keys)</span>';
+  document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => dispatch(acts[+b.dataset.act][1]));
+  const st = state.settings;
+  document.getElementById('settings').innerHTML = `
+    <button data-set="anchorOn" data-val="${st.anchorOn === 'block' ? 'above' : 'block'}">Anchor on: ${st.anchorOn === 'block' ? 'looked-at block' : 'space on top'}</button>
+    <button data-set="far" data-val="${!st.far}" class="${st.far ? 'on' : ''}">Far targeting</button>
+    <button data-set="chain" data-val="${!st.chain}" class="${st.chain ? 'on' : ''}">Chain Lines</button>`;
+  document.querySelectorAll('[data-scheme]').forEach(b => b.onclick = () => resetTo(b.dataset.scheme));
+  document.querySelectorAll('[data-hold]').forEach(b => b.onclick = () => dispatch({ type: 'hold', item: b.dataset.hold }));
+  document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
+    let v = b.dataset.val; if (v === 'true') v = true; else if (v === 'false') v = false;
+    dispatch({ type: 'setting', name: b.dataset.set, value: v });
+  });
+}
+document.getElementById('reset').onclick = () => resetTo(state.scheme);
+
+// ---- walkthroughs ----
+const look = (x, y) => ({ type: 'look', at: { x, y } });
+const L = { type: 'click', button: 'left' }, R = { type: 'click', button: 'right' };
+const WALKS = [
+  { title: 'Ramp: Anchor key', scheme: 'key', start: { held: 'pickaxe' },
+    text: 'The happy path with the keybind. You hold a pickaxe the whole time and the mod never touches your clicks. Watch for: nothing in red until the end, when you mine on purpose.',
+    steps: [['Look at the ground at (4,1)', look(4, 1)], ['Press V (Anchor 1)', { type: 'anchorKey' }],
+      ['Look at the near block (5,2)', look(5, 2)], ['Look back at (6,1) to see the preview move', look(6, 1)],
+      ['Look at the tall pillar top (14,6)', look(14, 6)], ['Press V (Anchor 2)', { type: 'anchorKey' }],
+      ['Look at (5,2) and left click: mining still works', look(5, 2)], ['Left click', L]] },
+  { title: 'Ramp: measuring item', scheme: 'tool', start: { held: 'pickaxe' },
+    text: 'The same Line using a stick as the measuring item. Watch for what happens when you forget to switch to the stick first, and when you switch away mid-Line.',
+    steps: [['Look at (5,2)', look(5, 2)], ['Left click with the pickaxe (forgot the stick!)', L],
+      ['Switch to stick', { type: 'hold', item: 'stick' }], ['Look at (4,1)', look(4, 1)], ['Left click (Anchor 1)', L],
+      ['Switch to dirt to place a block', { type: 'hold', item: 'dirt' }], ['Look at the ground at (3,1)', look(3, 1)], ['Right click', R],
+      ['Back to stick: the preview reappears', { type: 'hold', item: 'stick' }], ['Look at (14,6)', look(14, 6)], ['Left click (Anchor 2)', L]] },
+  { title: 'Ramp: measure mode', scheme: 'mode', start: { held: 'pickaxe' },
+    text: 'The same Line with measure mode. Then you forget the mode is on and try to mine. Watch for: the mine attempt becomes an Anchor instead.',
+    steps: [['Press M (mode on)', { type: 'modeKey' }], ['Look at (4,1)', look(4, 1)], ['Left click (Anchor 1)', L],
+      ['Look at (14,6)', look(14, 6)], ['Left click (Anchor 2)', L],
+      ['Look at (5,2): you want to mine it', look(5, 2)], ['Left click: no mining, an Anchor instead', L],
+      ['Right click to cancel it', R], ['Press M (mode off)', { type: 'modeKey' }], ['Left click: now it mines', L]] },
+  { title: 'Anchor in mid-air', scheme: 'key', start: {},
+    text: 'You want a Line from the ground to a point above the short pillar, where there is only air. You can\'t aim at air. Compare "Anchor on the looked-at block" with "Anchor on the space on top of it".',
+    steps: [['Look at the air at (20,6)', look(20, 6)], ['Press V: refused, it\'s air', { type: 'anchorKey' }],
+      ['Switch "Anchor on" to the space on top', { type: 'setting', name: 'anchorOn', value: 'above' }],
+      ['Look at the ground (8,1): the Anchor will sit on top, at (8,2)', look(8, 1)], ['Press V (Anchor 1 at ground level)', { type: 'anchorKey' }],
+      ['Look at the short pillar top (20,3)', look(20, 3)], ['Press V (Anchor 2 lands on top, at (20,4))', { type: 'anchorKey' }]] },
+  { title: 'Far away', scheme: 'key', start: { settings: { far: false } },
+    text: 'Long Lines need Anchors far beyond the 4.5-block reach. Vanilla aiming stops there. The mod can cast its own longer ray on the client because nothing goes to the server.',
+    steps: [['Look at the pillar top (14,6), about 12 blocks away', look(14, 6)], ['Press V: too far', { type: 'anchorKey' }],
+      ['Turn Far targeting on', { type: 'setting', name: 'far', value: true }], ['Press V again (Anchor 1)', { type: 'anchorKey' }],
+      ['Look at the far pillar (20,3)', look(20, 3)], ['Press V (Anchor 2)', { type: 'anchorKey' }],
+      ['Look at (20,3) and left click with a pickaxe: the server only uses normal reach', L]] },
+  { title: 'Chaining Lines', scheme: 'key', start: {},
+    text: 'Building a zig-zag or a roof outline: each Line starts where the last one ended. With Chain on, confirming a Line keeps its second Anchor as the start of the next one. Cancel ends the chain.',
+    steps: [['Turn Chain Lines on', { type: 'setting', name: 'chain', value: true }], ['Turn Far targeting on', { type: 'setting', name: 'far', value: true }],
+      ['Look at (7,1)', look(7, 1)], ['Press V', { type: 'anchorKey' }],
+      ['Look at (14,6)', look(14, 6)], ['Press V (Line 1; chain continues)', { type: 'anchorKey' }],
+      ['Look at (20,3)', look(20, 3)], ['Press V (Line 2; chain continues)', { type: 'anchorKey' }],
+      ['Press B to end the chain', { type: 'cancelKey' }]] },
+];
+let activeWalk = 0, walkPos = 0;
+function renderWalk() {
+  document.getElementById('tabs').innerHTML = WALKS.map((w, i) => `<button data-walk="${i}" class="${i === activeWalk ? 'active' : ''}">${w.title}</button>`).join('');
+  const w = WALKS[activeWalk];
+  document.getElementById('walk').innerHTML = `<p style="margin:0 0 6px">${w.text}</p>
+    <button class="primary" id="startWalk">Start / restart this walkthrough</button>
+    <div class="steps">${w.steps.map(([l], i) => `<button data-step="${i}" class="${i < walkPos ? 'done' : ''}" ${i !== walkPos ? 'disabled' : ''}>${i + 1}. ${l}</button>`).join('')}</div>`;
+  document.querySelectorAll('[data-walk]').forEach(b => b.onclick = () => { activeWalk = +b.dataset.walk; walkPos = 0; resetTo(WALKS[activeWalk].scheme, WALKS[activeWalk].start); renderWalk(); });
+  document.getElementById('startWalk').onclick = () => { walkPos = 0; resetTo(w.scheme, w.start); renderWalk(); };
+  document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { dispatch(w.steps[+b.dataset.step][1]); walkPos++; renderWalk(); });
+}
+
+resetTo('key');
+renderWalk();
+</script>
+</body>
+</html>
