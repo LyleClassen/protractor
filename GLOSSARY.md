@@ -16,6 +16,10 @@ _Avoid_: path, ray, diagonal, box
 The numbers describing a Line, such as its length, its angles and how many blocks it contains.
 _Avoid_: stats, info
 
+**Filled**:
+A position of a Line that already holds a block that would have to be broken before building there. Air, plants, snow layers and fluids leave a position unfilled. The guide shows only the positions that aren't Filled.
+_Avoid_: placed, done, built, occupied
+
 **Target**:
 The one saved Line the player is currently looking at. Deleting acts on the Target, and its Measurement is the one shown.
 _Avoid_: selected, focused, active, current
