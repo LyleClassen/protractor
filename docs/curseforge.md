@@ -35,6 +35,8 @@ See exactly which blocks make a straight line between any two points, at any ang
 
 ## Description (paste into CurseForge)
 
+![Protractor: see every block of a straight line, at any angle](https://raw.githubusercontent.com/LyleClassen/protractor/main/docs/banner.png)
+
 **Protractor** helps you build at angles.
 
 Mods like Measurements show the distance between two points along the N/S/E/W axes. Protractor goes further: pick any two points and it shows you exactly which blocks make up the line between them, at any angle in any direction.
